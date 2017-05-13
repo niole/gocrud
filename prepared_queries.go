@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"encoding/json"
 	"log"
 	"sort"
 )
@@ -16,31 +17,11 @@ func Map(baseArray []interface{}, F func(interface{}) interface{}) []interface{}
 	return newArray
 }
 
-type ByName []Field
-
-func (a ByName) Len() int           { return len(a) }
-func (a ByName) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-func (a ByName) Less(i, j int) bool { return a[i].name < a[j].name }
-
-// no duplicate fields, all valid fields, no unspecified
-// fields
-func (m *Model) AreValidFields(fields []Field) bool {
-	seenFields := make(map[string]bool)
-	for _, field := range fields {
-		if !m.fieldsSpec[field.name] || seenFields[field.name] {
-			return false
-		}
-		seenFields[field.name] = true
-	}
-
-	return true
-}
-
 type BaseCruder interface {
-	create([]Field)
-	read(string) []Result
-	update([]Field, string)
-	remove(string)
+	create([]FieldValue)
+	read([]FieldValue) []interface{}
+	update([]FieldValue, []FieldValue)
+	remove([]FieldValue)
 }
 
 type Cruder struct {
@@ -52,16 +33,41 @@ type Cruder struct {
 	removeStatement *Stmt
 }
 
-func (c *Cruder) SortFields(fields []Field) []Field {
-	return sort.Sort(ByName(fields))
+func (c *Cruder) ValidateCreateStatement(values []FieldValue) bool {
+	totalUniqueValues := 0
+	foundValues := make(map[string]bool, 0)
+
+	for _, value := range values {
+		if foundValues[value.Name] {
+			return false
+		} else {
+			totalUniqueValues += 1
+			foundValues[value.Name] = true
+		}
+	}
+
+	if totalUniqueValues != len(model.Fields) {
+		return false
+	}
+
+	return true
 }
 
-func (c *Cruder) create(fields []Field) {
-	if c.model.AreValidFields(fields) {
-		// create new, grab prepared query
+// takes specified values and executes a prepared create statement
+func (c *Cruder) create(values []FieldValue) {
+	if ValidateCreateStatement(values) {
+		formattedFields := make([]string, len(values))
+		formattedValues := make([]string, len(values))
 
-		sortedFields := c.SortFields(fields)
-		_, err := c.createStatement.Exec(Map(sortedFields, func(field Field) { return field.value })...)
+		for i, value := range values {
+			formattedFields[i] = value.Name
+			formattedValues[i] = value.Value
+		}
+
+		columns := strings.Join(formattedFields, ",")
+		allValues := strings.Join(formattedValues, ",")
+
+		_, err := c.createStatement.Exec(columns, allValues)
 
 		if err != nil {
 			log.Fatal(err)
@@ -69,8 +75,15 @@ func (c *Cruder) create(fields []Field) {
 	}
 }
 
-func (c *Cruder) read(id string) []interface{} {
-	rows, err := c.readStatement.Query(id)
+func (c *Cruder) read(values []FieldValues) []interface{} {
+	whereClause := make([]string, len(values))
+
+	for i, value := range values {
+		whereClause[i] = value.Name + "=" + value.Value
+	}
+
+	statement := strings.Join(whereClause, ",")
+	rows, err := c.readStatement.Query("*", statement)
 
 	defer rows.Close()
 
@@ -79,37 +92,63 @@ func (c *Cruder) read(id string) []interface{} {
 		log.Fatal(err)
 	}
 
-	allRows := make([]interface{}, 0)
+	allRows := make([]interface{}, 0) // this should be returned as JSON
 	for rows.Next() {
-		var id int
-		var name string
-		err = rows.Scan(&id, &name)
-		append(allRows, Result{id, name})
+		var all interface{}
+		err = rows.Scan(&all)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		newJson, err := json.Marshall(all)
 
 		if err != nil {
 			log.Fatal(err)
 		}
+
+		append(allRows, Result{id, name})
 	}
 
 	return allRows
 }
 
-func (c *Cruder) update(fields []Field, id string) {
-	_, err := c.updateStatement.Exec(id)
+func (c *Cruder) update(values []FieldValue, newValues []FieldValue) {
+	setClause := make([]string, len(newValues))
+	whereClause := make([]string, len(values))
+
+	for i, value := range newValues {
+		setClause[i] = value.Name + "=" + value.Value
+	}
+
+	for i, value := range values {
+		whereClause[i] = value.Name + "=" + value.Value
+	}
+
+	set := strings.Join(setClause, ",")
+	where := strings.Join(whereClause, ",")
+
+	_, err := c.updateStatement.Exec(set, where)
 	if err != nil {
 		log.Fatal(err)
 	}
 }
 
-func (c *Cruder) remove(id string) {
-	_, err := c.removeStatement(id)
+func (c *Cruder) remove(values []FieldValue) {
+	whereClause := make([]string, len(values))
+
+	for i, value := range values {
+		whereClause[i] = value.Name + "=" + value.Value
+	}
+
+	statement := strings.Join(whereClause, ",")
+	_, err := c.removeStatement(statement)
 	if err != nil {
 		log.Fatal(err)
 	}
 }
 
 func PrepareCreateStatement(db *DataBase, modelName string) *Stmt {
-	return db.Prepare("INSERT INTO " + modelName + "VALUES (?)")
+	return db.Prepare("INSERT INTO " + modelName + " (?) VALUES (?)")
 }
 
 func PrepareReadStatement(db *DataBase, modelName string) *Stmt {
@@ -124,7 +163,7 @@ func PrepareRemoveStatement(db *DataBase, modelName string) *Stmt {
 	return db.Prepare("DELETE FROM " + modelName + " WHERE ?")
 }
 
-func InitCruders(db *sql.DB, models []*Model) (cruders map[string]*Cruder) {
+func InitCruders(db *DataBase, models []*Model) (cruders map[string]*Cruder) {
 	for _, model := range models {
 		modelName := model.GetName()
 

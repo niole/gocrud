@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"log"
+	"net/http"
 )
 
 func IngestJSON() []*Model {
@@ -29,5 +30,7 @@ func main() {
 
 	db := &DataBase{dataBase}
 	db.InitTables(baseModels)
-	cruders := InitCruders(db, baseModels)
+	router := InitRouter(db, baseModels)
+	http.HandleFunc("*", router.DelegateRequest)
+	http.ListenAndServe(":8080", nil)
 }

@@ -88,3 +88,8 @@ func (f *Field) GetKind() string {
 func (f *Field) GetName() string {
 	return f.Kind
 }
+
+type FieldValue struct {
+	Name  string
+	Value string
+}
