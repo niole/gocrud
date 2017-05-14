@@ -36,6 +36,8 @@ func (d *DataBase) InitTables(models []*Model) {
 	}
 }
 
+// TODO this is not amazing
+// TODO use string interp
 func InitDatabase(user string, pw string, domain string, port string, dbName string) *sql.DB {
 	db, err := sql.Open("mysql", user+":"+pw+"@tcp("+domain+":"+port+")/"+dbName)
 

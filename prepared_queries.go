@@ -70,7 +70,7 @@ func (c *Cruder) read(values []FieldValue) []interface{} {
 	}
 
 	statement := strings.Join(whereClause, ",")
-	rows, err := c.readStatement.Query("*", statement)
+	rows, err := c.readStatement.Query(statement)
 
 	defer rows.Close()
 
@@ -152,7 +152,7 @@ func PrepareCreateStatement(db *DataBase, model *Model) *sql.Stmt {
 func PrepareReadStatement(db *DataBase, modelName string) *sql.Stmt {
 	fmt.Println("read")
 	baseQuery := `
-		SELECT ? FROM ` + modelName + ` WHERE ?
+		SELECT * FROM ` + modelName + ` WHERE ?
 	`
 	return db.Prepare(baseQuery)
 }
