@@ -24,42 +24,30 @@ type Cruder struct {
 	removeStatement *sql.Stmt
 }
 
-func (c *Cruder) ValidateCreateStatement(values []FieldValue) bool {
-	totalUniqueValues := 0
-	foundValues := make(map[string]bool, 0)
-
-	for _, value := range values {
-		if foundValues[value.Name] {
-			return false
-		} else {
-			totalUniqueValues += 1
-			foundValues[value.Name] = true
-		}
-	}
-
-	return totalUniqueValues == len(c.model.GetFields())
-}
-
 // takes specified values and executes a prepared create statement
 func (c *Cruder) create(values []FieldValue) {
-	if c.ValidateCreateStatement(values) {
-		formattedFields := make([]string, len(values))
-		formattedValues := make([]string, len(values))
+
+	formattedValues := make([]string, len(values))
+	modelFields := c.model.GetFields()
+
+	if len(formattedValues) == len(modelFields) {
 
 		for i, value := range values {
-			formattedFields[i] = value.Name
 			formattedValues[i] = value.Value
 		}
 
-		columns := strings.Join(formattedFields, ",")
 		allValues := strings.Join(formattedValues, ",")
 
-		_, err := c.createStatement.Exec(columns, allValues)
+		_, err := c.createStatement.Exec(allValues)
 
 		if err != nil {
 			log.Fatal(err)
 		}
+
+	} else {
+		log.Fatal("total columns in create statement doesn't match total columns in table")
 	}
+
 }
 
 func (c *Cruder) read(values []FieldValue) []interface{} {

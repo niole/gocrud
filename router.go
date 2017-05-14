@@ -3,7 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io"
+	//	"io"
 	"log"
 	"net/http"
 	"regexp"
@@ -47,7 +47,7 @@ func (r *Route) Handler(w http.ResponseWriter, crudType string, values []FieldVa
 	fmt.Println(crudType)
 	fmt.Println(values)
 
-	io.WriteString(w, "successful send")
+	//io.WriteString(w, "successful send")
 
 	//	switch crudType {
 	//	case "read":
@@ -70,13 +70,11 @@ func (s *Router) DelegateRequest(w http.ResponseWriter, r *http.Request) {
 	foundPath := s.pathValidator.FindStringSubmatch(r.URL.Path)
 
 	if foundPath == nil {
-		fmt.Println("deleg", foundPath == nil)
 		http.NotFound(w, r)
 		return
 	}
 
 	fieldValues := GetFormattedBody(r)
-	fmt.Println("fieldValues", fieldValues)
 	crudType := foundPath[2]
 	modelName := foundPath[1]
 	route := s.routes[modelName]
