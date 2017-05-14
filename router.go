@@ -3,10 +3,11 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	//	"io"
+	"io"
 	"log"
 	"net/http"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -16,23 +17,43 @@ type Text struct {
 
 func GetFormattedBody(req *http.Request) []FieldValue {
 	decoder := json.NewDecoder(req.Body)
+	values := make([]FieldValue, 0)
 
-	var body map[string]string
-
-	// while the array contains values
-	for decoder.More() {
+	for {
+		var body map[string]interface{}
 		err := decoder.Decode(&body)
+
 		if err != nil {
-			log.Fatal(err)
+			if err == io.EOF {
+				return values
+			} else {
+				log.Fatal(err)
+			}
+		}
+
+		for key, value := range body {
+
+			_, ok := value.(float64)
+			if ok {
+				stringifiedNumber := strconv.FormatFloat(4.2, 'f', -1, 64)
+				values = append(values, FieldValue{key, stringifiedNumber})
+			} else {
+				// it's already a string
+				v, ok := value.(string)
+
+				if ok {
+					values = append(values, FieldValue{key, "'" + v + "'"})
+				} else {
+					log.Fatal("this is not a string. Must handle other type cases")
+				}
+
+			}
+
 		}
 
 	}
-	defer req.Body.Close()
 
-	values := make([]FieldValue, 0)
-	for key, value := range body {
-		values = append(values, FieldValue{key, value})
-	}
+	defer req.Body.Close()
 
 	return values
 }
@@ -49,16 +70,16 @@ func (r *Route) Handler(w http.ResponseWriter, crudType string, values []FieldVa
 
 	//io.WriteString(w, "successful send")
 
-	//	switch crudType {
-	//	case "read":
-	//		//r.cruder.read(values)
-	//	case "update":
-	//	case "create":
-	//		r.cruder.create(values)
-	//	case "delete":
-	//	default:
-	//		return
-	//	}
+	switch crudType {
+	case "read":
+		r.cruder.read(values)
+	case "update":
+	case "create":
+		r.cruder.create(values)
+	case "delete":
+	default:
+		return
+	}
 }
 
 type Router struct {

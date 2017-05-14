@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"sort"
 	"strings"
 )
 
@@ -26,19 +27,18 @@ type Cruder struct {
 
 // takes specified values and executes a prepared create statement
 func (c *Cruder) create(values []FieldValue) {
-
-	formattedValues := make([]string, len(values))
 	modelFields := c.model.GetFields()
 
-	if len(formattedValues) == len(modelFields) {
+	if len(values) == len(modelFields) {
+		formattedValues := make([]interface{}, len(values))
+
+		sort.Sort(ByFieldValueName(values))
 
 		for i, value := range values {
 			formattedValues[i] = value.Value
 		}
 
-		allValues := strings.Join(formattedValues, ",")
-
-		_, err := c.createStatement.Exec(allValues)
+		_, err := c.createStatement.Exec(formattedValues...)
 
 		if err != nil {
 			log.Fatal(err)
