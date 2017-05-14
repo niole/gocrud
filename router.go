@@ -65,11 +65,11 @@ type Router struct {
 func (s *Router) DelegateRequest(w http.ResponseWriter, r *http.Request) {
 	foundPath := s.pathValidator.FindStringSubmatch(r.URL.Path)
 
-	if foundPath == nil {
-		http.NotFound(w, r)
-		log.Fatal("this route doesn't exist")
-		return
-	}
+	//	if foundPath == nil {
+	//		fmt.Println("deleg", foundPath == nil)
+	//		http.NotFound(w, r)
+	//		return
+	//	}
 
 	fieldValues := GetFormattedBody(r)
 	fmt.Println("fieldValues", fieldValues)
