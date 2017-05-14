@@ -5,7 +5,6 @@ import (
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
 	"log"
-	"strings"
 )
 
 type DataBase struct {
@@ -15,27 +14,16 @@ type DataBase struct {
 func (d *DataBase) Prepare(statement string) *sql.Stmt {
 	stmt, err := d.db.Prepare(statement)
 	if err != nil {
+		fmt.Println("prepare fail")
 		log.Fatal(err)
 	}
 
 	return stmt
 }
 
-// TODO this doesn't cover parametric types
-func GetFormattedColumns(fields []Field) string {
-	formattedColumns := make([]string, len(fields))
-	for i, field := range fields {
-		formattedColumns[i] = field.GetName() + " " + field.GetKind() + " "
-	}
-
-	fmt.Println(formattedColumns)
-
-	return strings.Join(formattedColumns, ",")
-}
-
 func (d *DataBase) CreateTable(model *Model) {
-	fmt.Println(model)
-	_, err := d.db.Exec("CREATE TABLE " + model.GetName() + " ( " + GetFormattedColumns(model.GetFields()) + ")")
+	query := "CREATE TABLE IF NOT EXISTS " + model.GetName() + "( " + model.GetFormattedColumnsWithTypes() + ")"
+	_, err := d.db.Exec(query)
 
 	if err != nil {
 		panic(err)
@@ -44,28 +32,8 @@ func (d *DataBase) CreateTable(model *Model) {
 
 func (d *DataBase) InitTables(models []*Model) {
 	for _, model := range models {
-		if !d.TableExists(model.GetName()) {
-			d.CreateTable(model)
-		}
+		d.CreateTable(model)
 	}
-}
-
-func (d *DataBase) TableExists(modelName string) bool {
-	db := d.db
-	query := "SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = ?"
-	rows, err := db.Query(query, modelName)
-
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	defer rows.Close()
-
-	if rows.Next() {
-		return true
-	}
-
-	return false
 }
 
 func InitDatabase(user string, pw string, domain string, port string, dbName string) *sql.DB {

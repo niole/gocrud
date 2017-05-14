@@ -1,5 +1,7 @@
 package main
 
+import "strings"
+
 const (
 	char            = "CHAR"
 	varchar         = "VARCHAR"
@@ -25,6 +27,27 @@ const (
 type Model struct {
 	Name   string
 	Fields []Field
+}
+
+// TODO this doesn't cover parametric types
+func (m *Model) GetFormattedColumnsWithTypes() string {
+	fields := m.GetFields()
+	formattedColumns := make([]string, len(fields))
+	for i, field := range fields {
+		formattedColumns[i] = field.GetName() + " " + field.GetKind()
+	}
+
+	return strings.Join(formattedColumns, ",")
+}
+
+func (m *Model) GetFormattedColumns() string {
+	fields := m.GetFields()
+	formattedColumns := make([]string, len(fields))
+	for i, field := range fields {
+		formattedColumns[i] = field.GetName()
+	}
+
+	return strings.Join(formattedColumns, ",")
 }
 
 func (m *Model) GetName() string {

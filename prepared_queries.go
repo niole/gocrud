@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"log"
 	"strings"
 )
@@ -133,12 +134,27 @@ func (c *Cruder) remove(values []FieldValue) {
 	}
 }
 
-func PrepareCreateStatement(db *DataBase, modelName string) *sql.Stmt {
-	return db.Prepare("INSERT INTO " + modelName + " (?) VALUES (?)")
+func PrepareCreateStatement(db *DataBase, model *Model) *sql.Stmt {
+	formattedColumns := model.GetFormattedColumns()
+	interpValuePlaceholders := make([]string, len(model.GetFields()))
+
+	for i, _ := range interpValuePlaceholders {
+		interpValuePlaceholders[i] = "?"
+	}
+
+	baseQuery := `
+		INSERT INTO ` + model.GetName() + `(` + formattedColumns + `)
+		VALUES(` + strings.Join(interpValuePlaceholders, ",") + `)
+	`
+	return db.Prepare(baseQuery)
 }
 
 func PrepareReadStatement(db *DataBase, modelName string) *sql.Stmt {
-	return db.Prepare("SELECT ? FROM " + modelName + " WHERE ?")
+	fmt.Println("read")
+	baseQuery := `
+		SELECT ? FROM ` + modelName + ` WHERE ?
+	`
+	return db.Prepare(baseQuery)
 }
 
 func PrepareUpdateStatement(db *DataBase, modelName string) *sql.Stmt {
@@ -156,7 +172,7 @@ func InitCruders(db *DataBase, models []*Model) (cruders map[string]*Cruder) {
 		cruders[modelName] = &Cruder{
 			db,
 			model,
-			PrepareCreateStatement(db, modelName),
+			PrepareCreateStatement(db, model),
 			PrepareReadStatement(db, modelName),
 			PrepareUpdateStatement(db, modelName),
 			PrepareRemoveStatement(db, modelName),
