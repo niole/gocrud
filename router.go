@@ -33,16 +33,15 @@ func GetFormattedBody(req *http.Request) []FieldValue {
 
 		for key, value := range body {
 
-			_, ok := value.(float64)
+			foundFloat, ok := value.(float64)
 			if ok {
-				stringifiedNumber := strconv.FormatFloat(4.2, 'f', -1, 64)
+				stringifiedNumber := strconv.FormatFloat(foundFloat, 'f', -1, 64)
 				values = append(values, FieldValue{key, stringifiedNumber})
 			} else {
-				// it's already a string
-				v, ok := value.(string)
+				foundString, ok := value.(string)
 
 				if ok {
-					values = append(values, FieldValue{key, "'" + v + "'"})
+					values = append(values, FieldValue{key, "'" + foundString + "'"})
 				} else {
 					log.Fatal("this is not a string. Must handle other type cases")
 				}

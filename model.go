@@ -59,8 +59,15 @@ func (m *Model) GetFormattedColumnsWithTypes() string {
 	fields := m.GetFields()
 	formattedColumns := make([]string, len(fields))
 
+	kind := ""
 	for i, field := range fields {
-		formattedColumns[i] = field.GetName() + " " + field.GetKind()
+		kind = field.GetKind()
+
+		if kind == char {
+			formattedColumns[i] = field.GetName() + " " + kind + "(255)"
+		} else {
+			formattedColumns[i] = field.GetName() + " " + kind
+		}
 	}
 
 	return strings.Join(formattedColumns, ",")
