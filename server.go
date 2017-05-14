@@ -43,16 +43,18 @@ type Route struct {
 
 func (r *Route) Handler(w http.ResponseWriter, crudType string, values []FieldValue) {
 	fmt.Println(w)
-	switch crudType {
-	case "read":
-		//r.cruder.read(values)
-	case "update":
-	case "create":
-		r.cruder.create(values)
-	case "delete":
-	default:
-		return
-	}
+	fmt.Println(crudType)
+	fmt.Println(values)
+	//	switch crudType {
+	//	case "read":
+	//		//r.cruder.read(values)
+	//	case "update":
+	//	case "create":
+	//		r.cruder.create(values)
+	//	case "delete":
+	//	default:
+	//		return
+	//	}
 }
 
 type Router struct {
