@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"regexp"
@@ -45,6 +46,9 @@ func (r *Route) Handler(w http.ResponseWriter, crudType string, values []FieldVa
 	fmt.Println(w)
 	fmt.Println(crudType)
 	fmt.Println(values)
+
+	io.WriteString(w, "successful send")
+
 	//	switch crudType {
 	//	case "read":
 	//		//r.cruder.read(values)
@@ -65,11 +69,11 @@ type Router struct {
 func (s *Router) DelegateRequest(w http.ResponseWriter, r *http.Request) {
 	foundPath := s.pathValidator.FindStringSubmatch(r.URL.Path)
 
-	//	if foundPath == nil {
-	//		fmt.Println("deleg", foundPath == nil)
-	//		http.NotFound(w, r)
-	//		return
-	//	}
+	if foundPath == nil {
+		fmt.Println("deleg", foundPath == nil)
+		http.NotFound(w, r)
+		return
+	}
 
 	fieldValues := GetFormattedBody(r)
 	fmt.Println("fieldValues", fieldValues)
