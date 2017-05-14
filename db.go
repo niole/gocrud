@@ -22,7 +22,10 @@ func (d *DataBase) Prepare(statement string) *sql.Stmt {
 }
 
 func (d *DataBase) CreateTable(model *Model) {
-	query := "CREATE TABLE IF NOT EXISTS " + model.GetName() + "( " + model.GetFormattedColumnsWithTypes() + ")"
+	query := `
+		CREATE TABLE IF NOT EXISTS ` + model.GetName() +
+		`(id serial, ` + model.GetFormattedColumnsWithTypes() + `)
+	`
 	_, err := d.db.Exec(query)
 
 	if err != nil {

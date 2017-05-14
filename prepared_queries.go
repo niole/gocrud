@@ -150,15 +150,27 @@ func PrepareCreateStatement(db *DataBase, model *Model) *sql.Stmt {
 }
 
 func PrepareReadStatement(db *DataBase, modelName string) *sql.Stmt {
-	fmt.Println("read")
 	baseQuery := `
 		SELECT * FROM ` + modelName + ` WHERE ?
 	`
 	return db.Prepare(baseQuery)
 }
 
-func PrepareUpdateStatement(db *DataBase, modelName string) *sql.Stmt {
-	return db.Prepare("UPDATE " + modelName + " SET ? WHERE ?")
+func PrepareUpdateStatement(db *DataBase, model *Model) *sql.Stmt {
+	fields := model.GetFields()
+
+	setClause := make([]string, len(fields))
+	for i, field := range fields {
+		setClause[i] = field.GetName() + "=?"
+	}
+
+	formattedSetClause := strings.Join(setClause, ",")
+	baseQuery := `UPDATE ` + model.GetName() + `
+		SET ` + formattedSetClause + `
+		WHERE id=?
+	`
+
+	return db.Prepare(baseQuery)
 }
 
 func PrepareRemoveStatement(db *DataBase, modelName string) *sql.Stmt {
@@ -168,13 +180,14 @@ func PrepareRemoveStatement(db *DataBase, modelName string) *sql.Stmt {
 func InitCruders(db *DataBase, models []*Model) (cruders map[string]*Cruder) {
 	for _, model := range models {
 		modelName := model.GetName()
+		fmt.Println("init")
 
 		cruders[modelName] = &Cruder{
 			db,
 			model,
 			PrepareCreateStatement(db, model),
 			PrepareReadStatement(db, modelName),
-			PrepareUpdateStatement(db, modelName),
+			PrepareUpdateStatement(db, model),
 			PrepareRemoveStatement(db, modelName),
 		}
 	}
