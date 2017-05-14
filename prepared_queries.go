@@ -177,7 +177,9 @@ func PrepareRemoveStatement(db *DataBase, modelName string) *sql.Stmt {
 	return db.Prepare("DELETE FROM " + modelName + " WHERE ?")
 }
 
-func InitCruders(db *DataBase, models []*Model) (cruders map[string]*Cruder) {
+func InitCruders(db *DataBase, models []*Model) map[string]*Cruder {
+	cruders := make(map[string]*Cruder)
+
 	for _, model := range models {
 		modelName := model.GetName()
 		fmt.Println("init")
@@ -191,5 +193,6 @@ func InitCruders(db *DataBase, models []*Model) (cruders map[string]*Cruder) {
 			PrepareRemoveStatement(db, modelName),
 		}
 	}
-	return
+
+	return cruders
 }
