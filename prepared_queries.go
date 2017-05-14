@@ -4,18 +4,8 @@ import (
 	"database/sql"
 	"encoding/json"
 	"log"
-	"sort"
+	"strings"
 )
-
-func Map(baseArray []interface{}, F func(interface{}) interface{}) []interface{} {
-	newArray := make([]interface{}, len(baseArray))
-
-	for i, elt := range baseArray {
-		newArray[i] = F(elt)
-	}
-
-	return newArray
-}
 
 type BaseCruder interface {
 	create([]FieldValue)
@@ -27,10 +17,10 @@ type BaseCruder interface {
 type Cruder struct {
 	db              *DataBase
 	model           *Model
-	createStatement *Stmt
-	readStatement   *Stmt
-	updateStatement *Stmt
-	removeStatement *Stmt
+	createStatement *sql.Stmt
+	readStatement   *sql.Stmt
+	updateStatement *sql.Stmt
+	removeStatement *sql.Stmt
 }
 
 func (c *Cruder) ValidateCreateStatement(values []FieldValue) bool {
@@ -46,16 +36,12 @@ func (c *Cruder) ValidateCreateStatement(values []FieldValue) bool {
 		}
 	}
 
-	if totalUniqueValues != len(model.Fields) {
-		return false
-	}
-
-	return true
+	return totalUniqueValues == len(c.model.GetFields())
 }
 
 // takes specified values and executes a prepared create statement
 func (c *Cruder) create(values []FieldValue) {
-	if ValidateCreateStatement(values) {
+	if c.ValidateCreateStatement(values) {
 		formattedFields := make([]string, len(values))
 		formattedValues := make([]string, len(values))
 
@@ -75,7 +61,7 @@ func (c *Cruder) create(values []FieldValue) {
 	}
 }
 
-func (c *Cruder) read(values []FieldValues) []interface{} {
+func (c *Cruder) read(values []FieldValue) []interface{} {
 	whereClause := make([]string, len(values))
 
 	for i, value := range values {
@@ -100,13 +86,13 @@ func (c *Cruder) read(values []FieldValues) []interface{} {
 			log.Fatal(err)
 		}
 
-		newJson, err := json.Marshall(all)
+		newJson, err := json.Marshal(all)
 
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		append(allRows, Result{id, name})
+		allRows = append(allRows, newJson)
 	}
 
 	return allRows
@@ -141,25 +127,25 @@ func (c *Cruder) remove(values []FieldValue) {
 	}
 
 	statement := strings.Join(whereClause, ",")
-	_, err := c.removeStatement(statement)
+	_, err := c.removeStatement.Exec(statement)
 	if err != nil {
 		log.Fatal(err)
 	}
 }
 
-func PrepareCreateStatement(db *DataBase, modelName string) *Stmt {
+func PrepareCreateStatement(db *DataBase, modelName string) *sql.Stmt {
 	return db.Prepare("INSERT INTO " + modelName + " (?) VALUES (?)")
 }
 
-func PrepareReadStatement(db *DataBase, modelName string) *Stmt {
+func PrepareReadStatement(db *DataBase, modelName string) *sql.Stmt {
 	return db.Prepare("SELECT ? FROM " + modelName + " WHERE ?")
 }
 
-func PrepareUpdateStatement(db *DataBase, modelName string) *Stmt {
+func PrepareUpdateStatement(db *DataBase, modelName string) *sql.Stmt {
 	return db.Prepare("UPDATE " + modelName + " SET ? WHERE ?")
 }
 
-func PrepareRemoveStatement(db *DataBase, modelName string) *Stmt {
+func PrepareRemoveStatement(db *DataBase, modelName string) *sql.Stmt {
 	return db.Prepare("DELETE FROM " + modelName + " WHERE ?")
 }
 
@@ -167,7 +153,7 @@ func InitCruders(db *DataBase, models []*Model) (cruders map[string]*Cruder) {
 	for _, model := range models {
 		modelName := model.GetName()
 
-		cruders[model.GetName()] = &Cruder{
+		cruders[modelName] = &Cruder{
 			db,
 			model,
 			PrepareCreateStatement(db, modelName),
@@ -176,5 +162,5 @@ func InitCruders(db *DataBase, models []*Model) (cruders map[string]*Cruder) {
 			PrepareRemoveStatement(db, modelName),
 		}
 	}
-
+	return
 }

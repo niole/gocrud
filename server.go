@@ -3,59 +3,11 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"html/template"
+	"log"
 	"net/http"
 	"regexp"
 	"strings"
 )
-
-var templates = template.Must(template.ParseFiles("edit.html", "view.html"))
-
-func viewHandler(w http.ResponseWriter, r *http.Request, title string) {
-	p, err := loadPage(title)
-
-	if err != nil {
-		http.Redirect(w, r, "/edit/"+title, http.StatusFound)
-	} else {
-		renderTemplate(w, p, "view.html")
-	}
-}
-
-func editHandler(w http.ResponseWriter, r *http.Request, title string) {
-	p, err := loadPage(title)
-	if err != nil {
-		p = &Page{Title: title}
-	}
-
-	renderTemplate(w, p, "edit.html")
-}
-
-func saveHandler(w http.ResponseWriter, r *http.Request, title string) {
-	body := r.FormValue("body")
-	p := &Page{Title: title, Body: []byte(body)}
-	p.save()
-	http.Redirect(w, r, "/view/"+title, http.StatusFound)
-}
-
-func renderTemplate(w http.ResponseWriter, p *Page, tmpl string) {
-	err := templates.ExecuteTemplate(w, tmpl, p)
-
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalRouterError)
-	}
-}
-
-func makeHandler(fn func(http.ResponseWriter, *http.Request, string)) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		m := validPath.FindStringSubmatch(r.URL.Path)
-
-		if m == nil {
-			http.NotFound(w, r)
-			return
-		}
-		fn(w, r, m[2])
-	}
-}
 
 type Text struct {
 	Stuff string
@@ -64,17 +16,21 @@ type Text struct {
 func GetFormattedBody(req *http.Request) []FieldValue {
 	decoder := json.NewDecoder(req.Body)
 
-	var body interface{}
+	var body map[string]string
 
-	err := decoder.Decode(&body)
-	if err != nil {
-		log.Fatal(err)
+	// while the array contains values
+	for decoder.More() {
+		err := decoder.Decode(&body)
+		if err != nil {
+			log.Fatal(err)
+		}
+
 	}
 	defer req.Body.Close()
 
 	values := make([]FieldValue, 0)
 	for key, value := range body {
-		values = append(values, FieldValue{key, string(value)})
+		values = append(values, FieldValue{key, value})
 	}
 
 	return values
@@ -82,15 +38,17 @@ func GetFormattedBody(req *http.Request) []FieldValue {
 
 type Route struct {
 	model  *Model
-	cruder Cruder
+	cruder *Cruder
 }
 
-func (r *Route) Handler(crudType string) {
+func (r *Route) Handler(w http.ResponseWriter, crudType string, values []FieldValue) {
+	fmt.Println(w)
 	switch crudType {
 	case "read":
-		r.cruder.read()
+		//r.cruder.read(values)
 	case "update":
 	case "create":
+		r.cruder.create(values)
 	case "delete":
 	default:
 		return
@@ -99,7 +57,7 @@ func (r *Route) Handler(crudType string) {
 
 type Router struct {
 	routes        map[string]*Route
-	pathValidator *Regexp
+	pathValidator *regexp.Regexp
 }
 
 func (s *Router) DelegateRequest(w http.ResponseWriter, r *http.Request) {
@@ -111,13 +69,15 @@ func (s *Router) DelegateRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	fieldValues := GetFormattedBody(r)
+	fmt.Println("fieldValues", fieldValues)
 	crudType := foundPath[2]
 	modelName := foundPath[1]
 	route := s.routes[modelName]
-	route.Handler(crudType)
+	route.Handler(w, crudType, fieldValues)
 }
 
-func GenerateRouteValidator(models []*Model) *Regexp {
+func GenerateRouteValidator(models []*Model) *regexp.Regexp {
 	baseChecker := make([]string, len(models))
 	crudTypeChecker := "(create|read|update|delete)"
 

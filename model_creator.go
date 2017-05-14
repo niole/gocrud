@@ -1,15 +1,11 @@
 package main
 
-import (
-	"reflect"
-)
-
 const (
-	char            = "CHARACTER"
+	char            = "CHAR"
 	varchar         = "VARCHAR"
 	boolean         = "BOOLEAN"
 	smallint        = "SMALLINT"
-	integer         = "INTEGER"
+	integer         = "INT"
 	decimal         = "DECIMAL"
 	numeric         = "NUMERIC"
 	real            = "REAL"
@@ -31,41 +27,12 @@ type Model struct {
 	Fields []Field
 }
 
-func (m *Model) ValidateInput(kind string, value interface{}) bool {
-	foundKind = reflect.TypeOf(value)
+func (m *Model) GetName() string {
+	return m.Name
+}
 
-	switch kind {
-	case char:
-		return foundKind == String || foundKind == Rune
-	case varchar:
-		return foundKind == String || foundKind == Rune
-	case boolean:
-		return foundKind == Boolean
-	case smallint:
-		return foundKind == Int
-	case integer:
-		return foundKind == Int
-	case decimal:
-		return foundKind == Int
-	case numeric:
-		return foundKind == Int
-	case real:
-		return foundKind == Int
-	case float:
-		return foundKind == Int
-	case doubleprecision:
-		return foundKind == Int
-	case date:
-		return foundKind == String || foundKind == Rune
-	case time:
-		return foundKind == Int
-	case timestamp:
-		return foundKind == String || foundKind == Rune
-	case clob:
-		return foundKind == Int
-	case blob:
-		return foundKind == Int
-	}
+func (m *Model) GetFields() []Field {
+	return m.Fields
 }
 
 type Field struct {
@@ -86,7 +53,7 @@ func (f *Field) GetKind() string {
 }
 
 func (f *Field) GetName() string {
-	return f.Kind
+	return f.Name
 }
 
 type FieldValue struct {

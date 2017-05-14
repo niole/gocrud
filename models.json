@@ -2,9 +2,9 @@
   {
     "name": "BankAccount",
     "Fields": [
-      {"name": "accountName", "kind": "CHARACTER"},
-      {"name": "totalMoney", "kind": "INTEGER"},
-      {"name": "owner", "kind": "CHARACTER"}
+      {"name": "accountName", "kind": "CHAR"},
+      {"name": "totalMoney", "kind": "INT"},
+      {"name": "owner", "kind": "CHAR"}
     ]
   }
 ]

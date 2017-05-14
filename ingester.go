@@ -26,7 +26,7 @@ func IngestJSON() []*Model {
 
 func main() {
 	baseModels := IngestJSON()
-	dataBase := InitDataBase("root", "root", "127.0.0.1", "3306", "nioledb")
+	dataBase := InitDatabase("root", "root", "127.0.0.1", "3307", "mysql")
 
 	db := &DataBase{dataBase}
 	db.InitTables(baseModels)
