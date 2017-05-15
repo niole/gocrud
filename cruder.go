@@ -9,10 +9,10 @@ import (
 )
 
 type BaseCruder interface {
-	create([]FieldValue)
-	read([]FieldValue) []interface{}
-	update([]FieldValue, []FieldValue)
-	remove([]FieldValue)
+	create(*CrudRequest)
+	read(*CrudRequest) []interface{}
+	update(*CrudRequest)
+	remove(*CrudRequest)
 }
 
 type Cruder struct {
