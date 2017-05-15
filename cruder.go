@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"log"
 	"sort"
 	"strings"
@@ -20,7 +21,6 @@ type Cruder struct {
 	model           *Model
 	createStatement *sql.Stmt
 	readStatement   *sql.Stmt
-	removeStatement *sql.Stmt
 }
 
 // takes specified values and executes a prepared create statement
@@ -125,15 +125,21 @@ func (c *Cruder) update(request *CrudRequest) {
 	}
 }
 
-func (c *Cruder) remove(values []FieldValue) {
-	whereClause := make([]string, len(values))
+func (c *Cruder) remove(request *CrudRequest) {
+	modelName := c.model.GetName()
+	values := request.GetFilters()
+	wherePlaceholder := make([]string, len(values))
+	whereStatement := make([]interface{}, len(values))
 
 	for i, value := range values {
-		whereClause[i] = value.Name + "=" + value.Value
+		wherePlaceholder[i] = value.Name + "=?"
+		whereStatement[i] = value.Value
 	}
 
-	statement := strings.Join(whereClause, ",")
-	_, err := c.removeStatement.Exec(statement)
+	placeholder := strings.Join(wherePlaceholder, ",")
+	baseQuery := "DELETE FROM " + modelName + " WHERE " + placeholder
+
+	_, err := c.db.db.Exec(baseQuery, whereStatement...)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -161,10 +167,6 @@ func PrepareReadStatement(db *DataBase, modelName string) *sql.Stmt {
 	return db.Prepare(baseQuery)
 }
 
-func PrepareRemoveStatement(db *DataBase, modelName string) *sql.Stmt {
-	return db.Prepare("DELETE FROM " + modelName + " WHERE ?")
-}
-
 func InitCruders(db *DataBase, models []*Model) map[string]*Cruder {
 	cruders := make(map[string]*Cruder)
 
@@ -176,7 +178,6 @@ func InitCruders(db *DataBase, models []*Model) map[string]*Cruder {
 			model,
 			PrepareCreateStatement(db, model),
 			PrepareReadStatement(db, modelName),
-			PrepareRemoveStatement(db, modelName),
 		}
 	}
 

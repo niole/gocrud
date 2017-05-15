@@ -58,8 +58,6 @@ func GetFormattedBody(req *http.Request) *CrudRequest {
 
 		if err != nil {
 			if err == io.EOF {
-				fmt.Println(values)
-				fmt.Println(filters)
 				return &CrudRequest{filters, values}
 			} else {
 				log.Fatal(err)
@@ -71,8 +69,6 @@ func GetFormattedBody(req *http.Request) *CrudRequest {
 			if succeeded {
 				values = append(values, FieldValue{key, formattedValue})
 			} else {
-				fmt.Println(value)
-
 				if key == WHERE_CLAUSE {
 					foundMap, ok := value.(map[string]interface{})
 
@@ -110,8 +106,6 @@ type Route struct {
 
 func (r *Route) Handler(w http.ResponseWriter, crudType string, values *CrudRequest) {
 	fmt.Println(w)
-	fmt.Println(crudType)
-	fmt.Println(values)
 
 	//io.WriteString(w, "successful send")
 
@@ -123,6 +117,7 @@ func (r *Route) Handler(w http.ResponseWriter, crudType string, values *CrudRequ
 	case "create":
 		r.cruder.create(values)
 	case "delete":
+		r.cruder.remove(values)
 	default:
 		return
 	}

@@ -2,7 +2,6 @@ package main
 
 import (
 	"database/sql"
-	"fmt"
 	_ "github.com/go-sql-driver/mysql"
 	"log"
 )
@@ -14,7 +13,6 @@ type DataBase struct {
 func (d *DataBase) Prepare(statement string) *sql.Stmt {
 	stmt, err := d.db.Prepare(statement)
 	if err != nil {
-		fmt.Println("prepare fail")
 		log.Fatal(err)
 	}
 
