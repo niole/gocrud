@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -38,8 +37,7 @@ func StringifyFieldValue(value interface{}) (string, bool) {
 		foundString, ok := value.(string)
 
 		if ok {
-			formattedString := "'" + foundString + "'"
-			return formattedString, true
+			return foundString, true
 		}
 	}
 
@@ -105,13 +103,16 @@ type Route struct {
 }
 
 func (r *Route) Handler(w http.ResponseWriter, crudType string, values *CrudRequest) {
-	fmt.Println(w)
-
-	//io.WriteString(w, "successful send")
 
 	switch crudType {
 	case "read":
-		r.cruder.read(values)
+		foundRows := r.cruder.read(values)
+		encodedRows, err := json.Marshal(foundRows)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		w.Write(encodedRows)
 	case "update":
 		r.cruder.update(values)
 	case "create":
@@ -121,6 +122,7 @@ func (r *Route) Handler(w http.ResponseWriter, crudType string, values *CrudRequ
 	default:
 		return
 	}
+
 }
 
 type Router struct {

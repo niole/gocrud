@@ -3,7 +3,6 @@ package main
 import (
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"log"
 	"sort"
 	"strings"
@@ -11,7 +10,7 @@ import (
 
 type BaseCruder interface {
 	create(*CrudRequest)
-	read(*CrudRequest) []interface{}
+	read(*CrudRequest) []map[string]interface{}
 	update(*CrudRequest)
 	remove(*CrudRequest)
 }
@@ -20,7 +19,6 @@ type Cruder struct {
 	db              *DataBase
 	model           *Model
 	createStatement *sql.Stmt
-	readStatement   *sql.Stmt
 }
 
 // takes specified values and executes a prepared create statement
@@ -49,8 +47,10 @@ func (c *Cruder) create(request *CrudRequest) {
 
 }
 
-func (c *Cruder) read(request *CrudRequest) []interface{} {
+func (c *Cruder) read(request *CrudRequest) []map[string]interface{} {
 	values := request.GetFilters()
+	modelName := c.model.GetName()
+	totalColumns := len(c.model.GetFields()) + 1 // add 1 to include ids
 	whereClause := make([]string, len(values))
 
 	for i, value := range values {
@@ -58,7 +58,10 @@ func (c *Cruder) read(request *CrudRequest) []interface{} {
 	}
 
 	statement := strings.Join(whereClause, ",")
-	rows, err := c.readStatement.Query(statement)
+	baseQuery := `
+		SELECT * FROM ` + modelName + ` WHERE ` + statement + `
+	`
+	rows, err := c.db.db.Query(baseQuery)
 
 	defer rows.Close()
 
@@ -67,21 +70,38 @@ func (c *Cruder) read(request *CrudRequest) []interface{} {
 		log.Fatal(err)
 	}
 
-	allRows := make([]interface{}, 0) // this should be returned as JSON
+	cols, err := rows.Columns()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	allRows := make([]map[string]interface{}, 0) // this should be returned as JSON
+
 	for rows.Next() {
-		var all interface{}
-		err = rows.Scan(&all)
+		all := make([]interface{}, totalColumns)
+		allContent := make([]string, totalColumns)
+
+		for i, _ := range allContent {
+			all[i] = &allContent[i]
+		}
+
+		err = rows.Scan(all...)
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		newJson, err := json.Marshal(all)
+		formattedJSON := make(map[string]interface{})
 
-		if err != nil {
-			log.Fatal(err)
+		for i, colName := range cols {
+			foundValue, err := json.Marshal(all[i]) // TODO not sure if should convert to JSON at this step
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			formattedJSON[colName] = string(foundValue)
 		}
 
-		allRows = append(allRows, newJson)
+		allRows = append(allRows, formattedJSON)
 	}
 
 	return allRows
@@ -160,13 +180,6 @@ func PrepareCreateStatement(db *DataBase, model *Model) *sql.Stmt {
 	return db.Prepare(baseQuery)
 }
 
-func PrepareReadStatement(db *DataBase, modelName string) *sql.Stmt {
-	baseQuery := `
-		SELECT * FROM ` + modelName + ` WHERE ?
-	`
-	return db.Prepare(baseQuery)
-}
-
 func InitCruders(db *DataBase, models []*Model) map[string]*Cruder {
 	cruders := make(map[string]*Cruder)
 
@@ -177,7 +190,6 @@ func InitCruders(db *DataBase, models []*Model) map[string]*Cruder {
 			db,
 			model,
 			PrepareCreateStatement(db, model),
-			PrepareReadStatement(db, modelName),
 		}
 	}
 
