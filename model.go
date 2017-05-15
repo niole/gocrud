@@ -116,3 +116,29 @@ type FieldValue struct {
 	Name  string
 	Value string
 }
+
+func (f *FieldValue) GetName() string {
+	return f.Name
+}
+
+type FieldFilter struct {
+	Name     string
+	Operator string // =, <, >, ...
+	Value    string
+}
+
+func (f *FieldFilter) GetName() string {
+	return f.Name
+}
+
+func (f *FieldFilter) GetOp() string {
+	return f.Operator
+}
+
+func (f *FieldFilter) GetValue() string {
+	return f.Value
+}
+
+func (f *FieldFilter) GetSerializedFilter() string {
+	return f.GetName() + f.GetOp() + f.GetValue()
+}

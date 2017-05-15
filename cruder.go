@@ -3,7 +3,6 @@ package main
 import (
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"log"
 	"sort"
 	"strings"
@@ -21,12 +20,12 @@ type Cruder struct {
 	model           *Model
 	createStatement *sql.Stmt
 	readStatement   *sql.Stmt
-	updateStatement *sql.Stmt
 	removeStatement *sql.Stmt
 }
 
 // takes specified values and executes a prepared create statement
-func (c *Cruder) create(values []FieldValue) {
+func (c *Cruder) create(request *CrudRequest) {
+	values := request.GetValues()
 	modelFields := c.model.GetFields()
 
 	if len(values) == len(modelFields) {
@@ -50,11 +49,12 @@ func (c *Cruder) create(values []FieldValue) {
 
 }
 
-func (c *Cruder) read(values []FieldValue) []interface{} {
+func (c *Cruder) read(request *CrudRequest) []interface{} {
+	values := request.GetFilters()
 	whereClause := make([]string, len(values))
 
 	for i, value := range values {
-		whereClause[i] = value.Name + "=" + value.Value
+		whereClause[i] = value.GetSerializedFilter()
 	}
 
 	statement := strings.Join(whereClause, ",")
@@ -87,22 +87,39 @@ func (c *Cruder) read(values []FieldValue) []interface{} {
 	return allRows
 }
 
-func (c *Cruder) update(values []FieldValue, newValues []FieldValue) {
-	setClause := make([]string, len(newValues))
-	whereClause := make([]string, len(values))
+// TODO validate queries better, user can currently send columns that don't exist
+func (c *Cruder) update(request *CrudRequest) {
+	newValues := request.GetValues()
+	values := request.GetFilters()
+
+	setClause := make([]interface{}, len(newValues))
+	setPlaceholders := make([]string, len(newValues))
+
+	whereClause := make([]interface{}, len(values))
+	wherePlaceholders := make([]string, len(values))
 
 	for i, value := range newValues {
-		setClause[i] = value.Name + "=" + value.Value
+		setClause[i] = value.Value
+		setPlaceholders[i] = value.GetName() + "=?"
 	}
 
 	for i, value := range values {
-		whereClause[i] = value.Name + "=" + value.Value
+		whereClause[i] = value.Value
+		wherePlaceholders[i] = value.GetName() + value.GetOp() + "?"
 	}
 
-	set := strings.Join(setClause, ",")
-	where := strings.Join(whereClause, ",")
+	setPlaceholder := strings.Join(setPlaceholders, ",")
+	wherePlaceholder := strings.Join(wherePlaceholders, ",")
 
-	_, err := c.updateStatement.Exec(set, where)
+	baseQuery := `UPDATE ` + c.model.GetName() + `
+		SET ` + setPlaceholder + `
+		WHERE ` + wherePlaceholder + `
+	`
+
+	arguments := append(setClause, whereClause...)
+
+	_, err := c.db.db.Exec(baseQuery, arguments...)
+
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -144,23 +161,6 @@ func PrepareReadStatement(db *DataBase, modelName string) *sql.Stmt {
 	return db.Prepare(baseQuery)
 }
 
-func PrepareUpdateStatement(db *DataBase, model *Model) *sql.Stmt {
-	fields := model.GetFields()
-
-	setClause := make([]string, len(fields))
-	for i, field := range fields {
-		setClause[i] = field.GetName() + "=?"
-	}
-
-	formattedSetClause := strings.Join(setClause, ",")
-	baseQuery := `UPDATE ` + model.GetName() + `
-		SET ` + formattedSetClause + `
-		WHERE id=?
-	`
-
-	return db.Prepare(baseQuery)
-}
-
 func PrepareRemoveStatement(db *DataBase, modelName string) *sql.Stmt {
 	return db.Prepare("DELETE FROM " + modelName + " WHERE ?")
 }
@@ -170,14 +170,12 @@ func InitCruders(db *DataBase, models []*Model) map[string]*Cruder {
 
 	for _, model := range models {
 		modelName := model.GetName()
-		fmt.Println("init")
 
 		cruders[modelName] = &Cruder{
 			db,
 			model,
 			PrepareCreateStatement(db, model),
 			PrepareReadStatement(db, modelName),
-			PrepareUpdateStatement(db, model),
 			PrepareRemoveStatement(db, modelName),
 		}
 	}

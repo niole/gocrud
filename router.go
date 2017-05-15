@@ -11,13 +11,46 @@ import (
 	"strings"
 )
 
-type Text struct {
-	Stuff string
+const (
+	WHERE_CLAUSE = "where"
+)
+
+type CrudRequest struct {
+	where []FieldFilter
+	main  []FieldValue
 }
 
-func GetFormattedBody(req *http.Request) []FieldValue {
+func (c *CrudRequest) GetValues() []FieldValue {
+	return c.main
+}
+
+func (c *CrudRequest) GetFilters() []FieldFilter {
+	return c.where
+}
+
+func StringifyFieldValue(value interface{}) (string, bool) {
+
+	foundFloat, ok := value.(float64)
+	if ok {
+		stringifiedNumber := strconv.FormatFloat(foundFloat, 'f', -1, 64)
+		return stringifiedNumber, true
+	} else {
+		foundString, ok := value.(string)
+
+		if ok {
+			formattedString := "'" + foundString + "'"
+			return formattedString, true
+		}
+	}
+
+	return "", false
+
+}
+
+func GetFormattedBody(req *http.Request) *CrudRequest {
 	decoder := json.NewDecoder(req.Body)
 	values := make([]FieldValue, 0)
+	filters := make([]FieldFilter, 0)
 
 	for {
 		var body map[string]interface{}
@@ -25,25 +58,38 @@ func GetFormattedBody(req *http.Request) []FieldValue {
 
 		if err != nil {
 			if err == io.EOF {
-				return values
+				fmt.Println(values)
+				fmt.Println(filters)
+				return &CrudRequest{filters, values}
 			} else {
 				log.Fatal(err)
 			}
 		}
 
 		for key, value := range body {
-
-			foundFloat, ok := value.(float64)
-			if ok {
-				stringifiedNumber := strconv.FormatFloat(foundFloat, 'f', -1, 64)
-				values = append(values, FieldValue{key, stringifiedNumber})
+			formattedValue, succeeded := StringifyFieldValue(value)
+			if succeeded {
+				values = append(values, FieldValue{key, formattedValue})
 			} else {
-				foundString, ok := value.(string)
+				fmt.Println(value)
 
-				if ok {
-					values = append(values, FieldValue{key, "'" + foundString + "'"})
-				} else {
-					log.Fatal("this is not a string. Must handle other type cases")
+				if key == WHERE_CLAUSE {
+					foundMap, ok := value.(map[string]interface{})
+
+					if ok {
+						for whereKey, whereValue := range foundMap {
+							formattedWhereValue, succeeded := StringifyFieldValue(whereValue)
+							if succeeded {
+								filters = append(filters, FieldFilter{whereKey, "=", formattedWhereValue})
+							} else {
+								log.Fatal("this is a type that's not available in where clauses")
+							}
+						}
+
+					} else {
+						log.Fatal("this type hasn't been handled by the response body formatter")
+					}
+
 				}
 
 			}
@@ -54,7 +100,7 @@ func GetFormattedBody(req *http.Request) []FieldValue {
 
 	defer req.Body.Close()
 
-	return values
+	return &CrudRequest{filters, values}
 }
 
 type Route struct {
@@ -62,7 +108,7 @@ type Route struct {
 	cruder *Cruder
 }
 
-func (r *Route) Handler(w http.ResponseWriter, crudType string, values []FieldValue) {
+func (r *Route) Handler(w http.ResponseWriter, crudType string, values *CrudRequest) {
 	fmt.Println(w)
 	fmt.Println(crudType)
 	fmt.Println(values)
@@ -73,6 +119,7 @@ func (r *Route) Handler(w http.ResponseWriter, crudType string, values []FieldVa
 	case "read":
 		r.cruder.read(values)
 	case "update":
+		r.cruder.update(values)
 	case "create":
 		r.cruder.create(values)
 	case "delete":
@@ -94,11 +141,11 @@ func (s *Router) DelegateRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fieldValues := GetFormattedBody(r)
+	formattedRequest := GetFormattedBody(r)
 	crudType := foundPath[2]
 	modelName := foundPath[1]
 	route := s.routes[modelName]
-	route.Handler(w, crudType, fieldValues)
+	route.Handler(w, crudType, formattedRequest)
 }
 
 func GenerateRouteValidator(models []*Model) *regexp.Regexp {
