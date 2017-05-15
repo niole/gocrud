@@ -12,6 +12,10 @@ import (
 
 const (
 	WHERE_CLAUSE = "where"
+	CREATE       = "create"
+	READ         = "read"
+	UPDATE       = "update"
+	DELETE       = "delete"
 )
 
 type CrudRequest struct {
@@ -105,20 +109,23 @@ type Route struct {
 func (r *Route) Handler(w http.ResponseWriter, crudType string, values *CrudRequest) {
 
 	switch crudType {
-	case "read":
+	case READ:
 		foundRows := r.cruder.read(values)
 		encodedRows, err := json.Marshal(foundRows)
 		if err != nil {
 			log.Fatal(err)
 		}
-
 		w.Write(encodedRows)
-	case "update":
+
+	case UPDATE:
 		r.cruder.update(values)
-	case "create":
+
+	case CREATE:
 		r.cruder.create(values)
-	case "delete":
+
+	case DELETE:
 		r.cruder.remove(values)
+
 	default:
 		return
 	}
@@ -147,7 +154,8 @@ func (s *Router) DelegateRequest(w http.ResponseWriter, r *http.Request) {
 
 func GenerateRouteValidator(models []*Model) *regexp.Regexp {
 	baseChecker := make([]string, len(models))
-	crudTypeChecker := "(create|read|update|delete)"
+	allCrudTypes := []string{CREATE, READ, UPDATE, DELETE}
+	crudTypeChecker := "(" + strings.Join(allCrudTypes, "|") + ")"
 
 	for i, model := range models {
 		baseChecker[i] = model.GetName()
