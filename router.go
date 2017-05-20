@@ -18,19 +18,26 @@ const (
 	DELETE       = "delete"
 )
 
+// contains query details
 type CrudRequest struct {
 	where []FieldFilter
 	main  []FieldValue
 }
 
+// contains data used to create records, or update records that match
+// a where clause/FieldFilter
 func (c *CrudRequest) GetValues() []FieldValue {
 	return c.main
 }
 
+// contains data used to specify to which records a main clause
+// or a crud type should be applied
 func (c *CrudRequest) GetFilters() []FieldFilter {
 	return c.where
 }
 
+// handles stringifying types in a json body such that
+// they can be used to create FieldValues or FieldFilters
 func StringifyFieldValue(value interface{}) (string, bool) {
 
 	foundFloat, ok := value.(float64)
@@ -49,6 +56,7 @@ func StringifyFieldValue(value interface{}) (string, bool) {
 
 }
 
+// takes json body and formats as a CrudRequest
 func GetFormattedBody(req *http.Request) *CrudRequest {
 	decoder := json.NewDecoder(req.Body)
 	values := make([]FieldValue, 0)
@@ -101,11 +109,15 @@ func GetFormattedBody(req *http.Request) *CrudRequest {
 	return &CrudRequest{filters, values}
 }
 
+// links together a data model and a Cruder, which will handles
+// creating, reading, updating, and deleteing records for which this
+// model is a schema
 type Route struct {
 	model  *Model
 	cruder *Cruder
 }
 
+// delegates requests based on crud type
 func (r *Route) Handler(w http.ResponseWriter, crudType string, values *CrudRequest) {
 
 	switch crudType {
@@ -132,11 +144,14 @@ func (r *Route) Handler(w http.ResponseWriter, crudType string, values *CrudRequ
 
 }
 
+// delegates all CRUD requests to different routes
+// informed by its pathValidator
 type Router struct {
 	routes        map[string]*Route
 	pathValidator *regexp.Regexp
 }
 
+// sends a request to a certain route based on the url
 func (s *Router) DelegateRequest(w http.ResponseWriter, r *http.Request) {
 	foundPath := s.pathValidator.FindStringSubmatch(r.URL.Path)
 
@@ -152,6 +167,8 @@ func (s *Router) DelegateRequest(w http.ResponseWriter, r *http.Request) {
 	route.Handler(w, crudType, formattedRequest)
 }
 
+// generates the Router's pathValidator from the accepted crud types
+// and existing Models
 func GenerateRouteValidator(models []*Model) *regexp.Regexp {
 	baseChecker := make([]string, len(models))
 	allCrudTypes := []string{CREATE, READ, UPDATE, DELETE}
@@ -165,6 +182,8 @@ func GenerateRouteValidator(models []*Model) *regexp.Regexp {
 	return regexp.MustCompile(regexpContent)
 }
 
+// initializes the Router from the database and generated Models
+// attaches generated Cruders
 func InitRouter(db *DataBase, models []*Model) *Router {
 	routes := make(map[string]*Route, 0)
 	cruders := InitCruders(db, models)
