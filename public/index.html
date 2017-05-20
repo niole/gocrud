@@ -27,8 +27,6 @@
           done: false,
           };
 
-          console.log(data)
-
         $.ajax({
           type: "POST",
           url: "/todo/create",
@@ -62,6 +60,7 @@
 
       function renderTodos(todos) {
         var todoView = document.getElementById("todos");
+        todoView.innerHTML = "";
 
         var renderedTodos = todos.forEach(function(todo) {
           var baseTodo = document.createElement("div");
