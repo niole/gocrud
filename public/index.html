@@ -17,6 +17,8 @@
     />
     <input type="submit" onclick="submit()" />
 
+    <div id="todos" />
+
     <script>
       function submit() {
         var newTodo = document.getElementById("createTodo").value;
@@ -48,13 +50,24 @@
           url: "/todo/read",
           data: JSON.stringify(data),
           success: function(d) {
-            console.log('read', d);
+            var todos = JSON.parse(d);
+            renderTodos(todos);
           },
           error: function(error) {
             console.error(error);
           },
         });
 
+      }
+
+      function renderTodos(todos) {
+        var todoView = document.getElementById("todos");
+
+        var renderedTodos = todos.forEach(function(todo) {
+          var baseTodo = document.createElement("div");
+          baseTodo.innerText = todo.content;
+          todoView.appendChild(baseTodo);
+        });
       }
 
     </script>
