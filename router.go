@@ -2,7 +2,9 @@ package main
 
 import (
 	"encoding/json"
+	//	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"regexp"
@@ -11,12 +13,16 @@ import (
 )
 
 const (
-	WHERE_CLAUSE = "where"
-	CREATE       = "create"
-	READ         = "read"
-	UPDATE       = "update"
-	DELETE       = "delete"
+	WHERE_CLAUSE    = "where"
+	CREATE          = "create"
+	READ            = "read"
+	UPDATE          = "update"
+	DELETE          = "delete"
+	VIEW_REGEXP     = "(.*).html"
+	ASSETS_DIR_NAME = "public"
 )
+
+var VIEW_PATTERN = regexp.MustCompile(VIEW_REGEXP)
 
 // contains query details
 type CrudRequest struct {
@@ -149,6 +155,7 @@ func (r *Route) Handler(w http.ResponseWriter, crudType string, values *CrudRequ
 type Router struct {
 	routes        map[string]*Route
 	pathValidator *regexp.Regexp
+	viewValidator *regexp.Regexp
 }
 
 // sends a request to a certain route based on the url
@@ -156,8 +163,16 @@ func (s *Router) DelegateRequest(w http.ResponseWriter, r *http.Request) {
 	foundPath := s.pathValidator.FindStringSubmatch(r.URL.Path)
 
 	if foundPath == nil {
-		http.NotFound(w, r)
-		return
+		foundView := s.viewValidator.FindStringSubmatch(r.URL.Path)
+
+		if foundView == nil {
+			http.NotFound(w, r)
+			return
+		}
+
+		// serve view
+		view := "./public/" + foundView[1] + ".html"
+		http.ServeFile(w, r, view)
 	}
 
 	formattedRequest := GetFormattedBody(r)
@@ -182,9 +197,38 @@ func GenerateRouteValidator(models []*Model) *regexp.Regexp {
 	return regexp.MustCompile(regexpContent)
 }
 
+// returns names of templates found in public directory
+func FindTemplates() []string {
+	files, err := ioutil.ReadDir(ASSETS_DIR_NAME)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	views := make([]string, len(files))
+	for i, file := range files {
+		foundViewName := VIEW_PATTERN.FindStringSubmatch(file.Name())
+
+		if foundViewName == nil {
+			log.Fatal("all views must have names and must be html templates")
+		}
+
+		views[i] = foundViewName[1]
+	}
+
+	return views
+}
+
+// generates regexp validator for html templates found
+// in public directory
+func GenerateViewValidator() *regexp.Regexp {
+	templateNames := FindTemplates()
+	return regexp.MustCompile("^/(" + strings.Join(templateNames, "|") + ")$")
+}
+
 // initializes the Router from the database and generated Models
 // attaches generated Cruders
 func InitRouter(db *DataBase, models []*Model) *Router {
+
 	routes := make(map[string]*Route, 0)
 	cruders := InitCruders(db, models)
 
@@ -193,5 +237,9 @@ func InitRouter(db *DataBase, models []*Model) *Router {
 		routes[modelName] = &Route{model, cruders[modelName]}
 	}
 
-	return &Router{routes, GenerateRouteValidator(models)}
+	return &Router{
+		routes,
+		GenerateRouteValidator(models),
+		GenerateViewValidator(),
+	}
 }
