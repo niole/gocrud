@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	//	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
@@ -55,6 +54,15 @@ func StringifyFieldValue(value interface{}) (string, bool) {
 
 		if ok {
 			return foundString, true
+		} else {
+			foundBool, ok := value.(bool)
+
+			if ok {
+				if foundBool {
+					return "1", true
+				}
+				return "0", true
+			}
 		}
 	}
 

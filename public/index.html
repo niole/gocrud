@@ -1,8 +1,63 @@
 <!DOCTYPE html>
 <html>
   <head>
+    <title>TODOs</title>
+    <script
+      src="https://code.jquery.com/jquery-3.2.1.min.js"
+      integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4="
+      crossorigin="anonymous"></script>
+
   </head>
   <body>
-    <div>This is an app</div>
+    <div>Todo list</div>
+
+    <input
+      placholder="add a todo"
+      id="createTodo"
+    />
+    <input type="submit" onclick="submit()" />
+
+    <script>
+      function submit() {
+        var newTodo = document.getElementById("createTodo").value;
+        var data = {
+          content: newTodo,
+          done: false,
+          };
+
+          console.log(data)
+
+        $.ajax({
+          type: "POST",
+          url: "/todo/create",
+          data: JSON.stringify(data),
+          success: function() {
+            getTodos();
+          },
+          error: function(error) {
+            console.error(error);
+          },
+        });
+      }
+
+      function getTodos() {
+        var data = { where: { done: false } };
+
+        $.ajax({
+          type: "POST",
+          url: "/todo/read",
+          data: JSON.stringify(data),
+          success: function(d) {
+            console.log('read', d);
+          },
+          error: function(error) {
+            console.error(error);
+          },
+        });
+
+      }
+
+    </script>
+
   </body>
 </html>

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 )
 
@@ -13,6 +14,7 @@ func main() {
 	db := &DataBase{dataBase}
 	db.InitTables(baseModels)
 	router := InitRouter(db, baseModels)
+	fmt.Println("nit handle func")
 	http.HandleFunc("/", router.DelegateRequest)
 	http.ListenAndServe(":8080", nil)
 }

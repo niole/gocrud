@@ -1,10 +1,9 @@
 [
   {
-    "name": "BankAccount",
+    "name": "todo",
     "Fields": [
-      {"name": "accountName", "kind": "CHAR"},
-      {"name": "totalMoney", "kind": "INT"},
-      {"name": "owner", "kind": "CHAR"}
+      {"name": "content", "kind": "CHAR"},
+      {"name": "done", "kind": "BOOL"}
     ]
   }
 ]

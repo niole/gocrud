@@ -94,6 +94,7 @@ func (c *Cruder) read(request *CrudRequest) []map[string]interface{} {
 
 		for i, colName := range cols {
 			foundValue, err := json.Marshal(all[i]) // TODO not sure if should convert to JSON at this step
+
 			if err != nil {
 				log.Fatal(err)
 			}
