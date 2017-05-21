@@ -194,7 +194,6 @@ func (s *Router) DelegateRequest(w http.ResponseWriter, r *http.Request) {
 
 	if foundPath == nil {
 		foundView := s.viewValidator.FindStringSubmatch(r.URL.Path)
-
 		if foundView == nil {
 			http.NotFound(w, r)
 			return
@@ -203,13 +202,16 @@ func (s *Router) DelegateRequest(w http.ResponseWriter, r *http.Request) {
 		// serve view
 		view := "./public/" + foundView[1] + ".html"
 		http.ServeFile(w, r, view)
-	}
 
-	formattedRequest := GetFormattedBody(r)
-	crudType := foundPath[2]
-	modelName := foundPath[1]
-	route := s.routes[modelName]
-	route.Handler(w, crudType, formattedRequest)
+	} else {
+
+		formattedRequest := GetFormattedBody(r)
+		crudType := foundPath[2]
+		modelName := foundPath[1]
+		route := s.routes[modelName]
+		route.Handler(w, crudType, formattedRequest)
+
+	}
 }
 
 // generates the Router's pathValidator from the accepted crud types
