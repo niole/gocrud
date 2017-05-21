@@ -21,21 +21,30 @@ type Cruder struct {
 	preparedStatements map[string]*sql.Stmt
 }
 
+// creates unique key that maps to a prepared statement
 func (c *Cruder) generateStatementKey(crudType string, request *CrudRequest) string {
-	filters := request.GetFilters()
-	values := request.GetValues()
+	// only keep everything for updates
+	// ony keep filters for delete and read
 
+	filters := request.GetFilters()
 	filterNames := make([]string, len(filters))
 	for i, filter := range filters {
 		filterNames[i] = filter.GetName()
 	}
 
-	valueNames := make([]string, len(values))
-	for i, value := range values {
-		valueNames[i] = value.GetName()
+	key := crudType + strings.Join(filterNames, "|")
+
+	if crudType == UPDATE {
+		values := request.GetValues()
+		valueNames := make([]string, len(values))
+		for i, value := range values {
+			valueNames[i] = value.GetName()
+		}
+
+		return key + strings.Join(valueNames, "|")
 	}
 
-	return crudType + strings.Join(filterNames, "|") + strings.Join(valueNames, "|")
+	return key
 }
 
 func (c *Cruder) generatePreparedStatement(crudType string, request *CrudRequest) *sql.Stmt {
