@@ -22,6 +22,7 @@ const (
 )
 
 var VIEW_PATTERN = regexp.MustCompile(VIEW_REGEXP)
+var allCrudTypes = []string{CREATE, READ, UPDATE, DELETE}
 
 // contains query details
 type CrudRequest struct {
@@ -136,6 +137,52 @@ type Router struct {
 	viewValidator *regexp.Regexp
 }
 
+// generates routeSpec.txt from all Routes in the Router
+func (s *Router) GenerateRouteSpec() {
+	spec := ""
+	var model *Model
+	var modelName string
+	var base string
+
+	for _, route := range s.routes {
+		model = route.model
+		modelName = model.GetName()
+		spec += "Routes for the " + modelName + "model\n\n"
+		base = "POST /" + modelName + "/"
+
+		for _, ct := range allCrudTypes {
+			spec += base + ct + ", payload: " + GetExamplePayload(ct, model) + "\n"
+		}
+
+		spec += "\n"
+	}
+
+	fileContent := []byte(spec)
+	err := ioutil.WriteFile("routeSpec.txt", fileContent, 0644)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+}
+
+func GetExamplePayload(crudType string, model *Model) string {
+	switch crudType {
+	case CREATE:
+		return "{" + model.GetFormattedColumns() + " }"
+	case READ:
+		return "{ where: { " + model.GetFormattedColumns() + " } }"
+	case UPDATE:
+		return "{" + model.GetFormattedColumns() + ", where: { " + model.GetFormattedColumns() + " } }"
+	case DELETE:
+		return "{ where: { " + model.GetFormattedColumns() + " } }"
+	default:
+		log.Fatal(crudType + " is not a crud type")
+	}
+
+	return ""
+}
+
 // sends a request to a certain route based on the url
 func (s *Router) DelegateRequest(w http.ResponseWriter, r *http.Request) {
 	foundPath := s.pathValidator.FindStringSubmatch(r.URL.Path)
@@ -164,7 +211,6 @@ func (s *Router) DelegateRequest(w http.ResponseWriter, r *http.Request) {
 // and existing Models
 func GenerateRouteValidator(models []*Model) *regexp.Regexp {
 	baseChecker := make([]string, len(models))
-	allCrudTypes := []string{CREATE, READ, UPDATE, DELETE}
 	crudTypeChecker := "(" + strings.Join(allCrudTypes, "|") + ")"
 
 	for i, model := range models {

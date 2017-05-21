@@ -89,7 +89,7 @@ func (m *Model) GetFormattedColumns() string {
 	fields := m.GetFields()
 	formattedColumns := make([]string, len(fields))
 	for i, field := range fields {
-		formattedColumns[i] = field.GetName()
+		formattedColumns[i] = " " + field.GetName()
 	}
 
 	return strings.Join(formattedColumns, ",")

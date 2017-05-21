@@ -13,6 +13,7 @@ func main() {
 	db := &DataBase{dataBase}
 	db.InitTables(baseModels)
 	router := InitRouter(db, baseModels)
+	router.GenerateRouteSpec()
 	http.HandleFunc("/", router.DelegateRequest)
 	http.ListenAndServe(":8080", nil)
 }
