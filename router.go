@@ -147,7 +147,7 @@ func (s *Router) GenerateRouteSpec() {
 	for _, route := range s.routes {
 		model = route.model
 		modelName = model.GetName()
-		spec += "Routes for the " + modelName + "model\n\n"
+		spec += "Routes for the " + modelName + " model\n\n"
 		base = "POST /" + modelName + "/"
 
 		for _, ct := range allCrudTypes {
@@ -155,6 +155,11 @@ func (s *Router) GenerateRouteSpec() {
 		}
 
 		spec += "\n"
+	}
+
+	allViews := FindTemplates()
+	for _, view := range allViews {
+		spec += "GET /" + view + ", the " + view + " view\n"
 	}
 
 	fileContent := []byte(spec)
