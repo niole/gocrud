@@ -77,7 +77,7 @@ func (c *Cruder) read(request *CrudRequest) []map[string]interface{} {
 		log.Fatal(err)
 	}
 
-	allRows := make([]map[string]interface{}, 0) // this should be returned as JSON
+	allRows := make([]map[string]interface{}, 0)
 
 	for rows.Next() {
 		all := make([]interface{}, totalColumns)
@@ -122,7 +122,7 @@ func (c *Cruder) update(request *CrudRequest) {
 
 	for i, value := range values {
 		whereClause[i] = value.Value
-		wherePlaceholders[i] = value.GetName() + value.GetOp() + "?"
+		wherePlaceholders[i] = value.GetSerializedFilter()
 	}
 
 	setPlaceholder := strings.Join(setPlaceholders, ",")
@@ -149,7 +149,7 @@ func (c *Cruder) remove(request *CrudRequest) {
 	whereStatement := make([]interface{}, len(values))
 
 	for i, value := range values {
-		wherePlaceholder[i] = value.Name + "=?"
+		wherePlaceholder[i] = value.GetSerializedFilter()
 		whereStatement[i] = value.Value
 	}
 

@@ -112,11 +112,6 @@ func (f *Field) GetName() string {
 	return f.Name
 }
 
-type Value interface {
-	GetName() string
-	GetValue() interface{}
-}
-
 type FieldValue struct {
 	Name  string
 	Value interface{}
