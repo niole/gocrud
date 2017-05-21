@@ -7,7 +7,6 @@ import (
 	"log"
 	"net/http"
 	"regexp"
-	"strconv"
 	"strings"
 )
 
@@ -41,35 +40,6 @@ func (c *CrudRequest) GetFilters() []FieldFilter {
 	return c.where
 }
 
-// handles stringifying types in a json body such that
-// they can be used to create FieldValues or FieldFilters
-func StringifyFieldValue(value interface{}) (string, bool) {
-
-	foundFloat, ok := value.(float64)
-	if ok {
-		stringifiedNumber := strconv.FormatFloat(foundFloat, 'f', -1, 64)
-		return stringifiedNumber, true
-	} else {
-		foundString, ok := value.(string)
-
-		if ok {
-			return foundString, true
-		} else {
-			foundBool, ok := value.(bool)
-
-			if ok {
-				if foundBool {
-					return "1", true
-				}
-				return "0", true
-			}
-		}
-	}
-
-	return "", false
-
-}
-
 // takes json body and formats as a CrudRequest
 func GetFormattedBody(req *http.Request) *CrudRequest {
 	decoder := json.NewDecoder(req.Body)
@@ -89,29 +59,21 @@ func GetFormattedBody(req *http.Request) *CrudRequest {
 		}
 
 		for key, value := range body {
-			formattedValue, succeeded := StringifyFieldValue(value)
-			if succeeded {
-				values = append(values, FieldValue{key, formattedValue})
-			} else {
-				if key == WHERE_CLAUSE {
-					foundMap, ok := value.(map[string]interface{})
 
-					if ok {
-						for whereKey, whereValue := range foundMap {
-							formattedWhereValue, succeeded := StringifyFieldValue(whereValue)
-							if succeeded {
-								filters = append(filters, FieldFilter{whereKey, "=", formattedWhereValue})
-							} else {
-								log.Fatal("this is a type that's not available in where clauses")
-							}
-						}
+			if key == WHERE_CLAUSE {
+				foundMap, ok := value.(map[string]interface{})
 
-					} else {
-						log.Fatal("this type hasn't been handled by the response body formatter")
+				if ok {
+					for whereKey, whereValue := range foundMap {
+						filters = append(filters, FieldFilter{whereKey, "=", whereValue})
 					}
 
+				} else {
+					log.Fatal("this type hasn't been handled by the response body formatter")
 				}
 
+			} else {
+				values = append(values, FieldValue{key, value})
 			}
 
 		}

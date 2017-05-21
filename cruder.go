@@ -2,7 +2,6 @@ package main
 
 import (
 	"database/sql"
-	"encoding/json"
 	"log"
 	"sort"
 	"strings"
@@ -52,16 +51,19 @@ func (c *Cruder) read(request *CrudRequest) []map[string]interface{} {
 	modelName := c.model.GetName()
 	totalColumns := len(c.model.GetFields()) + 1 // add 1 to include ids
 	whereClause := make([]string, len(values))
+	filterValues := make([]interface{}, len(values))
 
 	for i, value := range values {
 		whereClause[i] = value.GetSerializedFilter()
+		filterValues[i] = value.GetValue()
 	}
 
 	statement := strings.Join(whereClause, ",")
 	baseQuery := `
 		SELECT * FROM ` + modelName + ` WHERE ` + statement + `
 	`
-	rows, err := c.db.db.Query(baseQuery)
+
+	rows, err := c.db.db.Query(baseQuery, filterValues...)
 
 	defer rows.Close()
 
@@ -93,13 +95,7 @@ func (c *Cruder) read(request *CrudRequest) []map[string]interface{} {
 		formattedJSON := make(map[string]interface{})
 
 		for i, colName := range cols {
-			foundValue, err := json.Marshal(all[i]) // TODO not sure if should convert to JSON at this step
-
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			formattedJSON[colName] = string(foundValue)
+			formattedJSON[colName] = all[i]
 		}
 
 		allRows = append(allRows, formattedJSON)

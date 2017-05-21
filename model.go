@@ -112,19 +112,28 @@ func (f *Field) GetName() string {
 	return f.Name
 }
 
+type Value interface {
+	GetName() string
+	GetValue() interface{}
+}
+
 type FieldValue struct {
 	Name  string
-	Value string
+	Value interface{}
 }
 
 func (f *FieldValue) GetName() string {
 	return f.Name
 }
 
+func (f *FieldValue) GetValue() interface{} {
+	return f.Value
+}
+
 type FieldFilter struct {
 	Name     string
 	Operator string // =, <, >, ...
-	Value    string
+	Value    interface{}
 }
 
 func (f *FieldFilter) GetName() string {
@@ -135,10 +144,10 @@ func (f *FieldFilter) GetOp() string {
 	return f.Operator
 }
 
-func (f *FieldFilter) GetValue() string {
+func (f *FieldFilter) GetValue() interface{} {
 	return f.Value
 }
 
 func (f *FieldFilter) GetSerializedFilter() string {
-	return f.GetName() + f.GetOp() + f.GetValue()
+	return f.GetName() + f.GetOp() + "?"
 }
