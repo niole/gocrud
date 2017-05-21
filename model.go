@@ -32,11 +32,23 @@ type Model struct {
 	Fields []Field
 }
 
+type ByName []Value
+
+func (a ByName) Len() int           { return len(a) }
+func (a ByName) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a ByName) Less(i, j int) bool { return a[i].GetName() < a[j].GetName() }
+
 type ByFieldName []Field
 
 func (a ByFieldName) Len() int           { return len(a) }
 func (a ByFieldName) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a ByFieldName) Less(i, j int) bool { return a[i].Name < a[j].Name }
+
+type ByFieldFilterName []FieldFilter
+
+func (a ByFieldFilterName) Len() int           { return len(a) }
+func (a ByFieldFilterName) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a ByFieldFilterName) Less(i, j int) bool { return a[i].Name < a[j].Name }
 
 type ByFieldValueName []FieldValue
 
@@ -145,4 +157,8 @@ func (f *FieldFilter) GetValue() interface{} {
 
 func (f *FieldFilter) GetSerializedFilter() string {
 	return f.GetName() + f.GetOp() + "?"
+}
+
+type Value interface {
+	GetName() string
 }

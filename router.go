@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"regexp"
+	"sort"
 	"strings"
 )
 
@@ -52,6 +53,10 @@ func GetFormattedBody(req *http.Request) *CrudRequest {
 
 		if err != nil {
 			if err == io.EOF {
+
+				sort.Sort(ByFieldFilterName(filters))
+				sort.Sort(ByFieldValueName(values))
+
 				return &CrudRequest{filters, values}
 			} else {
 				log.Fatal(err)
@@ -81,6 +86,9 @@ func GetFormattedBody(req *http.Request) *CrudRequest {
 	}
 
 	defer req.Body.Close()
+
+	sort.Sort(ByFieldFilterName(filters))
+	sort.Sort(ByFieldValueName(values))
 
 	return &CrudRequest{filters, values}
 }
