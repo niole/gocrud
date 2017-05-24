@@ -1,0 +1,8 @@
+Routes for the todo model
+
+POST /todo/create, payload: { content, done }
+POST /todo/read, payload: { where: {  content, done } }
+POST /todo/update, payload: { content, done, where: {  content, done } }
+POST /todo/delete, payload: { where: {  content, done } }
+
+GET /index, the index view
